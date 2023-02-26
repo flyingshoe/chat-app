@@ -1,27 +1,44 @@
 const WebSocket = require("ws");
 require("dotenv").config();
-const ws = new WebSocket.Server({ port: process.env.REACT_APP_SERVER_PORT });
+const wss = new WebSocket.Server({ port: process.env.REACT_APP_SERVER_PORT });
 
 const chatList = [];
 const clientList = new Map();
 
-ws.on("connection", (client, req) => {
-  if (req.url === "/getChatList") {
-    client.send(JSON.stringify(chatList));
-    clientList.set(client, []); // Add client to clientList
+// Return chat list data
+const handleOnMsg = (c) => {
+  const data = {
+    userId: clientList.get(c),
+    chatList,
+  };
+  return JSON.stringify(data);
+};
+
+wss.on("connection", (client, req) => {
+  const urlParts = req.url.split("?");
+  const url = urlParts[0];
+  const userId = urlParts[1] || Date.now();
+  
+  // New user connects, could be existing user who refreshed page as well (use client parameter to check that)
+  if (url === "/getChatList") {
+    clientList.set(client, userId);
+    client.send(handleOnMsg(client)); // immediately send the chatList to the client
   }
 
+  // Receives a message from client
   client.on("message", (data) => {
-    data = { ...JSON.parse(data), id: Date.now() };
-
+    // Parse incoming data from client
+    data = {
+      ...JSON.parse(data),
+      userId: clientList.get(client),
+      msgId: Date.now(),
+    };
     chatList.push(data); //Add chat data to chatlist
 
     //Inform all clients of the new message
     [...clientList.keys()].forEach((c) => {
-      c.send(JSON.stringify(chatList));
+      c.send(handleOnMsg(c));
     });
-
-    clientList.set(client, [...clientList.get(client), data]); //Add chat data to individual client in clientList
   });
 
   client.on("close", () => {

@@ -1,37 +1,41 @@
-import {
-  AppBar,
-  Avatar,
-  Box,
-  Container,
-  Grid,
-  IconButton,
-  List,
-  ListItem,
-  ListItemAvatar,
-  ListItemText,
-  Paper,
-  TextField,
-  Toolbar,
-} from "@mui/material";
 import { useEffect, useState, useRef } from "react";
-import SendIcon from "@mui/icons-material/Send";
-
-let ws;
+import NameModal from "./components/NameModal";
+import BottomBar from "./components/BottomBar";
+import ChatContainer from "./components/ChatContainer";
+import ChatBox from "./components/ChatBox";
+import useNotification from "./hooks/useNotification";
+import useWebSocket from "./hooks/useWebSocket";
 
 export default function ChatApp() {
   const [chatList, setChatList] = useState([]);
-  const [newMsg, setNewMsg] = useState("");
-  const [username, setUsername] = useState("");
+  const [userId, setUserId] = useState("");
+  const [name, setName] = useState(() => {
+    return window.localStorage.getItem("name") || "";
+  });
   const msgRef = useRef(null);
   const listRef = useRef(null);
+  const modalRef = useRef(null);
 
+  // Hook to handle incoming notifications
+  useNotification(chatList);
+
+  // Establish web socket connection
+  const { ws } = useWebSocket((e) => {
+    const { userId, chatList } = JSON.parse(e.data);
+    setUserId(userId); //Save userId to State
+    window.localStorage.userId = userId; //Save userId to localstorage
+    setChatList(chatList);
+  });
+
+  // Check local storage, if does exist open Name Modal
   useEffect(() => {
-    ws = new WebSocket(
-      `ws://localhost:${process.env.REACT_APP_SERVER_PORT}/getChatList`
-    );
-    ws.onmessage = (e) => {
-      setChatList(JSON.parse(e.data));
-    };
+    try {
+      if (!window.localStorage.getItem("name")) {
+        modalRef.current.openModal();
+      }
+    } catch (e) {
+      console.log(e);
+    }
   }, []);
 
   //scroll to bottom of chat when use chat is added
@@ -39,89 +43,27 @@ export default function ChatApp() {
     listRef.current.scrollTo(0, listRef.current.scrollHeight);
   }, [chatList]);
 
-  function sendMsg() {
-    ws.send(JSON.stringify({ name: username, msg: newMsg }));
-    setNewMsg("");
-    msgRef.current.focus();
+  function sendMsg(newMsg) {
+    if (newMsg.trim() !== "") {
+      ws.send(JSON.stringify({ name: name, msg: newMsg }));
+      msgRef.current.value = "";
+      msgRef.current.focus();
+    }
   }
 
+  const saveName = (name, ls) => {
+    name = name.trim();
+    setName(name);
+    ls && window.localStorage.setItem("name", name);
+  };
+
   return (
-    <Container
-      style={{
-        display: "flex",
-        height: "100vh",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      <Paper
-        elevation={3}
-        style={{
-          width: "100%",
-          position: "relative",
-          height: "90vh",
-        }}
-      >
-        <AppBar position="absolute" sx={{ top: 0, background: "#f0f2f5" }}>
-          <Toolbar>
-            <TextField
-              fullWidth
-              label="Username"
-              variant="standard"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-            />
-          </Toolbar>
-        </AppBar>
-        <div
-          style={{ overflow: "auto", height: "calc(90vh - 130px)", marginTop: 60 }}
-          ref={listRef}
-        >
-          {chatList.map((chat) => (
-            <List
-              key={chat.id}
-              sx={{
-                width: "100%",
-                maxWidth: 360,
-                bgcolor: "background.paper",
-              }}
-            >
-              <ListItem>
-                <ListItemAvatar>
-                  <Avatar>{chat.name[0]?.toUpperCase()}</Avatar>
-                </ListItemAvatar>
-                <ListItemText
-                  sx={{
-                    background: "#f0f2f5",
-                    padding: "15px 30px",
-                    borderRadius: "20px",
-                  }}
-                  primary={chat.name}
-                  secondary={chat.msg}
-                />
-              </ListItem>
-            </List>
-          ))}
-        </div>
-        <AppBar
-          position="absolute"
-          sx={{ top: "auto", bottom: 0, background: "#f0f2f5" }}
-        >
-          <Toolbar>
-            <TextField
-              sx={{ background: "white", width: "100%" }}
-              placeholder="Type a message"
-              ref={msgRef}
-              value={newMsg}
-              onChange={(e) => setNewMsg(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && sendMsg()}
-            />
-            <IconButton onClick={sendMsg}>
-              <SendIcon />
-            </IconButton>
-          </Toolbar>
-        </AppBar>
-      </Paper>
-    </Container>
+    <>
+      <ChatContainer>
+        <ChatBox chatList={chatList} listRef={listRef} userId={userId} />
+        <BottomBar sendMsg={sendMsg} msgRef={msgRef} />
+      </ChatContainer>
+      <NameModal ref={modalRef} saveName={saveName} />
+    </>
   );
 }

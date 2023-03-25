@@ -1,6 +1,10 @@
 import React from "react";
 import { Avatar, ListItem, ListItemAvatar, ListItemText } from "@mui/material";
+import { AES, enc } from "crypto-js";
+
 const ChatBubble = ({ side = "left", chat }) => {
+  const decryptedMsg = AES.decrypt( chat.msg, process.env.REACT_APP_AES_KEY ).toString(enc.Utf8);
+  
   return (
     <div
       style={{
@@ -22,7 +26,7 @@ const ChatBubble = ({ side = "left", chat }) => {
             borderRadius: "20px",
           }}
           primary={chat.name}
-          secondary={chat.msg}
+          secondary={decryptedMsg}
         />
 
         {side === "right" && (

@@ -5,6 +5,7 @@ import ChatContainer from "./components/ChatContainer";
 import ChatBox from "./components/ChatBox";
 import useNotification from "./hooks/useNotification";
 import useWebSocket from "./hooks/useWebSocket";
+import { AES } from "crypto-js";
 
 export default function ChatApp() {
   const [chatList, setChatList] = useState([]);
@@ -44,8 +45,10 @@ export default function ChatApp() {
   }, [chatList]);
 
   function sendMsg(newMsg) {
-    if (newMsg.trim() !== "") {
-      ws.send(JSON.stringify({ name: name, msg: newMsg }));
+    newMsg = newMsg.trim();
+    if (newMsg !== "") {
+      const encryptedMsg = AES.encrypt( newMsg, process.env.REACT_APP_AES_KEY );
+      ws.send(JSON.stringify({ name: name, msg: encryptedMsg.toString() }));
       msgRef.current.value = "";
       msgRef.current.focus();
     }

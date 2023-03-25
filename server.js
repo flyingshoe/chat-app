@@ -17,7 +17,8 @@ const handleOnMsg = (c) => {
 wss.on("connection", (client, req) => {
   const urlParts = req.url.split("?");
   const url = urlParts[0];
-  const userId = urlParts[1] || Date.now();
+  const params = new URLSearchParams(urlParts[1])
+  const userId = params.get('userId') || Date.now();
   
   // New user connects, could be existing user who refreshed page as well (use client parameter to check that)
   if (url === "/getChatList") {
@@ -30,7 +31,7 @@ wss.on("connection", (client, req) => {
     // Parse incoming data from client
     data = {
       ...JSON.parse(data),
-      userId: clientList.get(client),
+      userId: clientList.get(client).toString(),
       msgId: Date.now(),
     };
     chatList.push(data); //Add chat data to chatlist

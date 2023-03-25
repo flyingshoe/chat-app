@@ -8,7 +8,7 @@ const useWebSocket = (handleOnMessage) => {
     const userId = window.localStorage.getItem("userId");
     ws = new WebSocket(
       `ws://localhost:${process.env.REACT_APP_SERVER_PORT}/getChatList${
-        userId ? "?userId=123123" : ""
+        userId ? "?userId=" + userId : ""
       }`
     );
     ws.onmessage = handleOnMessage;

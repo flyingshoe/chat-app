@@ -18,7 +18,7 @@ wss.on("connection", (client, req) => {
   const urlParts = req.url.split("?");
   const url = urlParts[0];
   const params = new URLSearchParams(urlParts[1])
-  const userId = params.get('userId') || Date.now();
+  const userId = params.get('userId') || Date.now().toString();
   
   // New user connects, could be existing user who refreshed page as well (use client parameter to check that)
   if (url === "/getChatList") {
